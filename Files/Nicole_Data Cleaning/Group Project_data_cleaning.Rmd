@@ -1,0 +1,288 @@
+---
+title: "Group Project"
+author: "NAJ"
+date: "2025-11-07"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, echo=FALSE}
+library(dplyr)
+library(readr)
+```
+
+```{r}
+tobacco_data = read.csv("tu_new.csv")
+```
+
+```{r}
+#check for number of NAs in the data, by columns
+colSums(is.na(tobacco_data))
+```
+
+
+```{r}
+#remove the columns that we will not use in the analysis
+cols_to_remove = c("wt", "hhid", "ssnyn", "urban", "smsast", "reltrf", "health", "ind", "majind", "occ", "rcow", "adjinc", "hitype", "cause113", "follow", "dayod", "hosp", "hospd", "indalg", "agesmk", "smokhome", "curruse")
+
+tobacco_data = tobacco_data %>%
+  select(-all_of(cols_to_remove))
+```
+
+```{r}
+colSums(is.na(tobacco_data))
+```
+
+```{r}
+#recode the 9 census divisions into the four census regions (now: 1 = Northeast, 2 = Midwest, 3 = South, 4 = West)
+tobacco_data = tobacco_data %>%
+  mutate(
+    stater = case_when(
+      stater >= 11 & stater <= 29 ~ 1,
+      stater >= 30 & stater <= 49 ~ 2,
+      stater >= 50 & stater <= 79 ~ 3,
+      stater >= 80 & stater <= 99 ~ 4,
+      TRUE ~ stater     # keep original value if outside the range
+    )
+  )
+```
+
+```{r}
+#make the sex column binary (now: 1 = male, 0 = female)
+tobacco_data = tobacco_data %>%
+  mutate(
+    sex = case_when(
+      sex == 2 ~ 0,
+          TRUE ~ sex     # keep original value if outside the range
+    )
+  )
+```
+
+```{r}
+#recoding the place of birth into smaller categories (now: 1 = africa, 2 = asia, 3 = europe, 4 = north america, not US or Mexico, 5 = south america, 6 = central america, 8 = islands, not US or PR, 9 = US, 10 = missing)
+tobacco_data = tobacco_data %>%
+  mutate(
+    pob = case_when(
+      pob == 0 ~ 10,
+      pob == 101 ~ 1,
+      pob == 102 ~ 2,
+      pob >= 103 & pob <= 104 ~ 3,
+      pob == 105 ~ 4,
+      pob == 106 ~ 5,
+      pob == 107 ~ 6,
+      pob == 108 ~ 7,
+      pob >= 109 & pob <= 111 ~ 8,
+      pob >= 901 & pob <= 960 ~ 9,
+      TRUE ~ pob   # keep original value if outside the range
+    )
+  )
+```
+
+```{r}
+#replace NAs in the race column with 6
+tobacco_data = tobacco_data %>%
+  mutate(
+    race = case_when(
+      is.na(race) ~ 6,
+      TRUE ~ race # keep original value if outside the range
+    )
+  )
+```
+
+```{r}
+#hispanic origin (now: 3 = missing, 2 = mexican or hispanic, 1 = non-hispanic)
+tobacco_data = tobacco_data %>%
+  mutate(
+    hisp = case_when(
+      is.na(hisp) ~ 3,
+      hisp >=1 & hisp <= 2 ~ 1,
+      hisp == 3 ~ 2,
+      TRUE ~ hisp # keep original value if outside the range
+    )
+  )
+```
+
+```{r}
+#recode marital status to make less categories (now: 4 = unknown or under 15 years old, 3 = always single, 2 = once married, 1 = currently married)
+tobacco_data = tobacco_data %>%
+  mutate(
+    ms = case_when(
+      is.na(ms) ~ 4,
+      ms >=2 & ms <= 4 ~ 2,
+      ms == 5 ~ 3,
+      TRUE ~ ms # keep original value if outside the range
+    )
+  )
+```
+
+```{r}
+#recode number of people in the household to a binary (1 = single person, 0 = 2-26 people)
+tobacco_data = tobacco_data %>%
+  mutate(
+    hhnum = case_when(
+      hhnum >=2 & hhnum <= 26 ~ 0,
+      TRUE ~ hhnum # keep original value if outside the range
+    )
+  )
+```
+
+```{r}
+#recode housing tenure (new: 1 = homeowner, 2 = renter, 3 = missing)
+tobacco_data = tobacco_data %>%
+  mutate(
+    tenure = case_when(
+      is.na(tenure) ~ 3,
+      tenure >=2 & tenure <= 3 ~ 2,
+      TRUE ~ tenure # keep original value if outside the range
+    )
+  )
+```
+
+```{r}
+#recode education (now: 1 = did not complete high school, 2 = completed high school, 3 = 2 or 4 year degree, 4 = masters or doctorate degree, 5 = continuing/professional education, 6 = missing)
+tobacco_data = tobacco_data %>%
+  mutate(
+    educ = case_when(
+      is.na(educ) ~ 6,
+      educ >= 1 & educ <= 3 ~ 1,
+      educ == 4 ~ 2,
+      educ >= 5 & educ <= 6 ~ 3,
+      educ >= 7 & educ <= 8 ~ 4,
+      educ >= 9 & educ <= 14 ~ 5,
+      TRUE ~ educ   # keep original value if outside the range
+    )
+  )
+```
+
+```{r}
+#recode veteran status to a binary (1 = veteran, 0 = not veteran or unknown)
+tobacco_data = tobacco_data %>%
+  mutate(
+    vt = case_when(
+      is.na(vt) ~ 0,
+      TRUE ~ vt # keep original value if outside the range
+    )
+  )
+```
+
+```{r}
+#recode citizenship (now: 1 = citizen, 2 = non-citizen, 3 = missing)
+tobacco_data = tobacco_data %>%
+  mutate(
+    citizen = case_when(
+      is.na(citizen) ~ 3,
+      citizen >= 1 & citizen <= 4 ~ 1,
+      citizen == 5 ~ 2,
+      TRUE ~ citizen   # keep original value if outside the range
+    )
+  )
+```
+
+```{r}
+#first, in esr (employment status code) column, if it is NA and the major occupation code shows "armed forces", then fill the employment status as "working"
+tobacco_data = tobacco_data %>%
+  mutate(
+    esr = case_when(
+      is.na(esr) & grepl("11", majocc) ~ 1,
+      TRUE ~ esr
+    )
+  )
+
+#next, recode the employment status variables (now: 0 = not employed (includes under 13 years old or missing), 1 = employed or looking )
+tobacco_data = tobacco_data %>%
+  mutate(
+    esr = case_when(
+      is.na(esr) ~ 0,
+      esr >= 1 & esr <= 3 ~ 1,
+      esr >= 4 & esr <= 5 ~ 0,
+      TRUE ~ esr   # keep original value if outside the range
+    )
+  )
+```
+
+```{r}
+#recode major occupation (new: 12 = missing)
+tobacco_data = tobacco_data %>%
+  mutate(
+    majocc = case_when(
+      is.na(majocc) ~ 12,
+      TRUE ~ majocc   # keep original value if outside the range
+    )
+  )
+```
+
+```{r}
+#recode major occupation (new: 12 = missing)
+tobacco_data = tobacco_data %>%
+  mutate(
+    povpct = case_when(
+      is.na(povpct) ~ 22,
+      TRUE ~ povpct   # keep original value if outside the range
+    )
+  )
+```
+
+```{r}
+#recode health insurance status (new: 1 = had insurance, 2 = no insurance, 3 = unknown)
+tobacco_data = tobacco_data %>%
+  mutate(
+    histatus = case_when(
+      is.na(histatus) ~ 3,
+      histatus == 0 ~ 2,
+      TRUE ~ histatus   # keep original value if outside the range
+    )
+  )
+```
+
+```{r}
+#recode smoked more than 100 cigarettes to binary (now: 1 = yes, 0 = no)
+tobacco_data = tobacco_data %>%
+  mutate(
+    smok100 = case_when(
+      smok100 == 2 ~ 0,
+      TRUE ~ smok100   # keep original value if outside the range
+    )
+  )
+```
+
+```{r}
+#recode smoking status (now: 1 = never smoked, 2 = smoker, 3 = quit, 4 = missing)
+tobacco_data = tobacco_data %>%
+  mutate(
+    smokstat = case_when(
+      is.na(smokstat) ~ 4,
+      smokstat >= 2 & smokstat <= 3 ~ 2,
+      smokstat == 4 ~ 3,
+      TRUE ~ smokstat   # keep original value if outside the range
+    )
+  )
+```
+
+```{r}
+#recode uses smokeless tobacco (now: 1 has used, 2 = has never used, 3 = missing)
+tobacco_data = tobacco_data %>%
+  mutate(
+    everuse = case_when(
+      is.na(everuse) ~ 3,
+      grepl("^1", everuse) ~ 1,   # starts with 1
+      grepl("^2", everuse) ~ 2,   # starts with 2
+      grepl("^9", everuse) ~ 3,   # starts with 9
+      TRUE ~ everuse              # keep original if none match
+    )
+  )
+```
+
+```{r}
+#check for number of NAs in the data, by columns
+colSums(is.na(tobacco_data))
+```
+
+```{r}
+#export the new datatable to the working directory
+write_csv(tobacco_data, "tobacco_data_clean.csv")
+```
+
+

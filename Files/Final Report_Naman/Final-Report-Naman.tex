@@ -1,0 +1,328 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+%
+\documentclass[
+]{article}
+\usepackage{amsmath,amssymb}
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{xcolor}
+\usepackage[margin=1in]{geometry}
+\usepackage{longtable,booktabs,array}
+\usepackage{calc} % for calculating minipage widths
+% Correct order of tables after \paragraph or \subparagraph
+\usepackage{etoolbox}
+\makeatletter
+\patchcmd\longtable{\par}{\if@noskipsec\mbox{}\fi\par}{}{}
+\makeatother
+% Allow footnotes in longtable head/foot
+\IfFileExists{footnotehyper.sty}{\usepackage{footnotehyper}}{\usepackage{footnote}}
+\makesavenoteenv{longtable}
+\usepackage{graphicx}
+\makeatletter
+\newsavebox\pandoc@box
+\newcommand*\pandocbounded[1]{% scales image to fit in text height/width
+  \sbox\pandoc@box{#1}%
+  \Gscale@div\@tempa{\textheight}{\dimexpr\ht\pandoc@box+\dp\pandoc@box\relax}%
+  \Gscale@div\@tempb{\linewidth}{\wd\pandoc@box}%
+  \ifdim\@tempb\p@<\@tempa\p@\let\@tempa\@tempb\fi% select the smaller of both
+  \ifdim\@tempa\p@<\p@\scalebox{\@tempa}{\usebox\pandoc@box}%
+  \else\usebox{\pandoc@box}%
+  \fi%
+}
+% Set default figure placement to htbp
+\def\fps@figure{htbp}
+\makeatother
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\usepackage{bookmark}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+\hypersetup{
+  pdftitle={BIOSTAT 625 Report},
+  pdfauthor={Naman Dhariwal},
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+
+\title{BIOSTAT 625 Report}
+\author{Naman Dhariwal}
+\date{2025-12-11}
+
+\begin{document}
+\maketitle
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  Introduction
+\end{enumerate}
+
+This project predicts 5-year all-cause mortality among U.S. smokers
+using a Light Gradient Boosting Machine (LightGBM) classifier applied to
+the NLMS Tobacco Use Cohort. The dataset contains nearly 500,000
+individuals with rich demographic, socioeconomic, and behavioral
+predictors. Because mortality is a rare event (≈4\%), the modeling
+approach must address severe class imbalance while preserving
+sensitivity to at-risk individuals. LightGBM was selected for its strong
+performance on large, imbalanced tabular data and its compatibility with
+model interpretability tools such as SHAP.
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{1}
+\tightlist
+\item
+  Data \& Preprocessing
+\end{enumerate}
+
+The outcome variable is a binary indicator of death within 5 years
+(inddea). Predictors include:
+
+\begin{itemize}
+\tightlist
+\item
+  Demographics: age (age), sex (sex), race/ethnicity (race), country of
+  birth (pob), region of residence (stater)
+\item
+  Socioeconomic: income-to-poverty ratio (povpct), education (educ),
+  employment status (esr), occupation (majocc), citizenship (citizen)
+\item
+  Household/Social: marital status (ms), number of people living in
+  household (hhnum), veteran status (vt)
+\item
+  Health-related: health insurance coverage status (histatus), smoking
+  status (smokstat), smoked more than 100 cigarettes in lifetime
+  (smok100), smokeless tobacco use (everuse)
+\end{itemize}
+
+2.1 Imbalanced outcome
+
+Deaths account for only \textasciitilde4\% of observations: Survived (0)
+378501; Died (1) 16124. Therefore, a naive classifier would achieve
+\textasciitilde96\% accuracy by predicting survival for everyone. This
+required explicit correction. This makes accuracy misleading and
+highlights the importance of metrics such as recall, balanced accuracy,
+ROC-AUC, and PR-AUC.
+
+2.2 Categorical encoding
+
+Categorical predictors (e.g., marital status, employment, region,
+smoking status) were converted into machine-readable form using one-hot
+encoding. Binary variables remained as 0/1, and continuous variables
+(e.g., age, povpct) were not altered.
+
+2.3 Handling class imbalance
+
+LightGBM's scale\_pos\_weight parameter was set to: scale\_pos\_weight =
+(\# survivors / \# deaths). This increases the penalty for
+misclassifying deaths and helps the model focus on the minority class
+without oversampling or synthetic data generation. A stratified 80/20
+split ensured proportional representation of deaths in both sets.
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{2}
+\tightlist
+\item
+  Methods
+\end{enumerate}
+
+A LightGBM classifier {[}1{]} was trained on the one-hot encoded feature
+matrix. Model development included:
+
+\begin{itemize}
+\tightlist
+\item
+  Objective: binary logistic loss
+\item
+  Evaluation metrics: accuracy, balanced accuracy, precision, recall,
+  F1, ROC-AUC, PR-AUC
+\item
+  Cross-validation: 5-fold CV to estimate generalization performance
+\item
+  Hyperparameters: tuned learning rate, max depth, number of leaves,
+  number of trees
+\item
+  Imbalance correction: scale\_pos\_weight as described above.
+\end{itemize}
+
+3.1 Rationale for LightGBM
+
+LightGBM is well suited for this task due to:
+
+\begin{itemize}
+\tightlist
+\item
+  Efficiency on very large tabular datasets
+\item
+  Ability to model nonlinear and interaction effects
+\item
+  Native handling of class imbalance
+\item
+  Interpretability via SHAP
+\end{itemize}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{3}
+\tightlist
+\item
+  Results \& Discussions
+\end{enumerate}
+
+4.1 Cross-validated performance
+
+\begin{longtable}[]{@{}lrr@{}}
+\caption{Five-fold cross-validation results for
+LightGBM.}\tabularnewline
+\toprule\noalign{}
+Metric & Mean & SD \\
+\midrule\noalign{}
+\endfirsthead
+\toprule\noalign{}
+Metric & Mean & SD \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Accuracy & 0.8309 & 0.0012 \\
+Balanced Accuracy & 0.8361 & 0.0012 \\
+Precision & 0.1745 & 0.0012 \\
+Recall & 0.8418 & 0.0015 \\
+F1-score & 0.2891 & 0.0017 \\
+ROC-AUC & 0.9087 & 0.0022 \\
+PR-AUC & 0.3497 & 0.0099 \\
+\end{longtable}
+
+4.2 Test-set performance
+
+\begin{longtable}[]{@{}lr@{}}
+\caption{Held-out test-set performance for LightGBM.}\tabularnewline
+\toprule\noalign{}
+Metric & Value \\
+\midrule\noalign{}
+\endfirsthead
+\toprule\noalign{}
+Metric & Value \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Accuracy & 0.8265 \\
+Balanced Accuracy & 0.8341 \\
+Precision & 0.1708 \\
+Recall & 0.8425 \\
+F1-score & 0.2841 \\
+ROC-AUC & 0.9070 \\
+PR-AUC & 0.3563 \\
+\end{longtable}
+
+The model achieved a recall of 0.8425 on the held-out test set, meaning
+that it correctly identified approximately 84\% of all individuals who
+actually died. In public health and clinical risk prediction settings,
+this is a critical property: ``False negatives (missed deaths) are more
+harmful than false positives.''
+
+High recall indicates that the model is effective at capturing true
+high-risk cases, even when they form a very small portion of the
+population. This sensitivity is especially valuable for early
+intervention, population screening, and prioritizing individuals for
+health outreach or monitoring.
+
+Precision was relatively low (0.1708), which is expected in datasets
+where the positive class is extremely rare. Low precision does not
+indicate model failure in this context; instead, it reflects the
+inherent difficulty of predicting a rare outcome.
+
+4.3 ROC Curve
+
+\begin{figure}
+\includegraphics[width=0.5\linewidth]{figures/roc_lightgbm} \caption{ROC Curve for LightGBM}\label{fig:ROC_curve}
+\end{figure}
+
+The model's ROC-AUC of 0.907 indicates excellent ability to distinguish
+between individuals who died and those who survived across all possible
+classification thresholds. Additionally, the PR-AUC of 0.356 is strong
+given the 4\% event rate; random guessing would achieve a PR-AUC near
+0.04. This demonstrates that the model is identifying high-risk
+individuals far better than chance, despite class imbalance.
+
+4.4 Key Feature Effects
+
+To better understand how the model assigns risk, SHAP dependence
+analysis was used to examine the effect of the most influential
+predictors. Age showed a strong, monotonic relationship with mortality
+risk: SHAP values increased steadily with age, indicating that older
+individuals contribute substantially more to predicted mortality. This
+effect was consistent across all income levels. Other influential
+features included citizenship category, age, sex, smoking, and
+income-to-poverty ratio, reflecting the combined biological and
+socioeconomic determinants of mortality.
+
+\begin{figure}
+\includegraphics[width=0.5\linewidth]{figures/shap_age} \caption{SHAP dependence plot for age}\label{fig:shap-age}
+\end{figure}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{4}
+\tightlist
+\item
+  Conclusion
+\end{enumerate}
+
+This project developed a LightGBM classifier to predict 5-year mortality
+among smokers in the NLMS Tobacco Use Cohort, a large and highly
+imbalanced dataset. After one-hot encoding categorical variables and
+applying class weighting to address the rarity of death events, the
+model demonstrated strong performance on both cross-validation and
+held-out test data. High recall and AUC values indicate that the model
+effectively identifies individuals at elevated mortality risk, even when
+the positive class represents only \textasciitilde4\% of the population.
+Although precision is low, as expected in rare-event prediction, the
+model's ability to capture the majority of true deaths makes it suitable
+for screening and population risk stratification. Overall, LightGBM
+provides a robust, efficient, and interpretable framework for mortality
+prediction in large epidemiologic datasets, offering practical utility
+for public health research and targeted intervention strategies.
+
+Reference:
+
+{[}1{]} Ke, G., Meng, Q., Finley, T., Wang, T., Chen, W., Ma, W.,
+\ldots{} \& Liu, T. Y. (2017). Lightgbm: A highly efficient gradient
+boosting decision tree. Advances in neural information processing
+systems, 30.
+
+\end{document}
